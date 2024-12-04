@@ -1,0 +1,132 @@
+---
+- name: Update all servers
+  hosts: all
+  become: yes
+  tasks:
+    - name: Update all packages
+      apt:
+        update_cache: yes
+        # upgrade: dist 시간초과때문에 일단 주석처리
+        upgrade: yes
+        cache_valid_time: 3600
+        
+- name: Remove APT lock
+  hosts: all
+  become: yes
+  tasks:
+    - name: Remove APT lock file
+      file:
+        path: /var/lib/apt/lists/lock
+        state: absent
+
+    - name: Update all packages
+      apt:
+        update_cache: yes
+        upgrade: yes
+
+- name: Configure PostgreSQL Server
+  hosts: postgresql_server
+  become: yes
+  tasks:
+    - name: Install PostgreSQL
+      apt:
+        name:
+          - postgresql
+          - postgresql-contrib
+        state: present
+
+    - name: Allow external connections to PostgreSQL
+      lineinfile:
+        path: /etc/postgresql/14/main/pg_hba.conf
+        regexp: '^host\s+all\s+all\s+127\.0\.0\.1/32\s+md5'
+        line: 'host all all 0.0.0.0/0 md5'
+        state: present
+
+    - name: Configure PostgreSQL to listen on all addresses
+      lineinfile:
+        path: /etc/postgresql/14/main/postgresql.conf
+        regexp: '^#?listen_addresses\s*='
+        line: "listen_addresses = '*'"
+        state: present
+
+    - name: Restart PostgreSQL service
+      systemd:
+        name: postgresql
+        state: restarted
+        enabled: true
+
+- name: Configure Redis Server
+  hosts: redis_server
+  become: yes
+  tasks:
+    - name: Install Redis
+      apt:
+        name: redis-server
+        state: present
+
+    - name: Configure Redis to allow external connections
+      replace:
+        path: /etc/redis/redis.conf
+        regexp: '^bind\s+127\.0\.0\.1'
+        replace: 'bind 0.0.0.0'
+
+    - name: Restart Redis service
+      systemd:
+        name: redis-server
+        state: restarted
+        enabled: true
+
+- name: Configure RabbitMQ Server
+  hosts: rabbitmq_server
+  become: yes
+  tasks:
+    - name: Install Erlang dependencies
+      apt:
+        name:
+          - curl
+          - gnupg
+        state: present
+
+    - name: Add Erlang Solutions repository key
+      apt_key:
+        url: https://packages.erlang-solutions.com/ubuntu/erlang_solutions.asc
+        state: present
+
+    - name: Add Erlang Solutions repository
+      apt_repository:
+        repo: 'deb https://packages.erlang-solutions.com/ubuntu focal contrib'
+        state: present
+
+    - name: Update apt cache
+      apt:
+        update_cache: yes
+
+    - name: Install Erlang
+      apt:
+        name: erlang
+        state: present
+
+    - name: Add RabbitMQ signing key
+      apt_key:
+        url: https://keys.openpgp.org/vks/v1/by-fingerprint/6026DFCA74145A1CBF73FFA23A612618E8E6E7E9
+        keyring: /usr/share/keyrings/com.rabbitmq.team.gpg
+        state: present
+
+    - name: Add RabbitMQ repository
+      apt_repository:
+        repo: 'deb [signed-by=/usr/share/keyrings/com.rabbitmq.team.gpg] https://dl.cloudsmith.io/public/rabbitmq/rabbitmq-server/deb/ubuntu focal main'
+        state: present
+
+    - name: Install RabbitMQ server
+      apt:
+        name: rabbitmq-server
+        state: present
+
+    - name: Enable RabbitMQ management plugin
+      command: rabbitmq-plugins enable rabbitmq_management
+
+    - name: Restart RabbitMQ service
+      systemd:
+        name: rabbitmq-server
+        state: restarted
+        enabled: true

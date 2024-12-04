@@ -1,0 +1,22 @@
+{
+  "bastion_public_ip": {
+    "sensitive": false,
+    "type": "string",
+    "value": "43.200.7.47"
+  },
+  "pg_server_ip": {
+    "sensitive": false,
+    "type": "string",
+    "value": "10.0.2.165"
+  },
+  "redis_server_ip": {
+    "sensitive": false,
+    "type": "string",
+    "value": "10.0.2.73"
+  },
+  "rmq_server_ip": {
+    "sensitive": false,
+    "type": "string",
+    "value": "10.0.2.176"
+  }
+}

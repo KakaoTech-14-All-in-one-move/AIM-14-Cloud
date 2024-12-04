@@ -1,0 +1,11 @@
+version: '3.8'
+
+services:
+  app:
+    image: 058264144764.dkr.ecr.ap-northeast-2.amazonaws.com/pitching_repo:be_latest
+    container_name: aim_be_server
+    restart: always
+    ports:
+      - "8080:8080"  # EC2 인스턴스의 보안 그룹에서 8080 포트 허용 필요
+    env_file:
+      - .env
